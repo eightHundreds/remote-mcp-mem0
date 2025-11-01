@@ -3,18 +3,30 @@
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "remote-mcp-server-authless",
-	"main": "src/index.ts",
-	"compatibility_date": "2025-03-10",
-        "compatibility_flags": ["nodejs_compat"],
+        "$schema": "node_modules/wrangler/config-schema.json",
+        "name": "remote-mcp-server-authless",
+        "main": "src/index.ts",
+        "compatibility_date": "2025-03-10",
+        "compatibility_flags": [
+                "nodejs_compat"
+        ],
         "observability": {
                 "enabled": true
         },
         "migrations": [
                 {
-                        "tag": "v2",
-                        "deleted_classes": ["MyMCP"]
+                        "new_sqlite_classes": [
+                                "Mem0MCP"
+                        ],
+                        "tag": "v1"
                 }
-        ]
+        ],
+        "durable_objects": {
+                "bindings": [
+                        {
+                                "class_name": "Mem0MCP",
+                                "name": "MCP_OBJECT"
+                        }
+                ]
+        },
 }
