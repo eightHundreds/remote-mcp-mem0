@@ -156,15 +156,18 @@ type WorkerEnv = {
 let cachedHandler:
   | ((request: Request, env: WorkerEnv, ctx: ExecutionContext) => Promise<Response>)
   | undefined;
+let cachedSseHandler:
+  | ((request: Request, env: WorkerEnv, ctx: ExecutionContext) => Promise<Response>)
+  | undefined;
 let cachedSignature: string | undefined;
 
-function getHandler(env: WorkerEnv) {
+function getHandlers(env: WorkerEnv) {
   const apiKey = env.MEM0_API_KEY ?? globalProcess?.env?.MEM0_API_KEY ?? '';
   const defaultUserId = env.DEFAULT_USER_ID ?? 'mem0-mcp-user';
   const accessToken = env.MCP_ACCESS_TOKEN ?? globalProcess?.env?.MCP_ACCESS_TOKEN ?? '';
   const signature = `${apiKey}::${defaultUserId}::${accessToken}`;
 
-  if (!cachedHandler || cachedSignature !== signature) {
+  if (!cachedHandler || !cachedSseHandler || cachedSignature !== signature) {
     const server = createServer({
       config: {
         mem0ApiKey: apiKey,
@@ -172,10 +175,11 @@ function getHandler(env: WorkerEnv) {
       },
     });
     cachedHandler = createMcpHandler(server, { route: '/mcp' });
+    cachedSseHandler = createMcpHandler(server, { route: '/sse' });
     cachedSignature = signature;
   }
 
-  return cachedHandler;
+  return { httpHandler: cachedHandler, sseHandler: cachedSseHandler };
 }
 
 export async function fetch(
@@ -190,14 +194,17 @@ export async function fetch(
     if (unauthorizedResponse) {
       return unauthorizedResponse;
     }
-    const handler = getHandler(env);
-    return handler(request, env, ctx);
+    const { httpHandler } = getHandlers(env);
+    return httpHandler(request, env, ctx);
   }
 
   if (url.pathname === '/sse' || url.pathname === '/sse/message') {
-    return new Response('SSE transport is not available in this deployment.', {
-      status: 404,
-    });
+    const unauthorizedResponse = enforceAuth(request, env, url);
+    if (unauthorizedResponse) {
+      return unauthorizedResponse;
+    }
+    const { sseHandler } = getHandlers(env);
+    return sseHandler(request, env, ctx);
   }
 
   return new Response('Not found', { status: 404 });
