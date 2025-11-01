@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createMcpHandler } from 'agents/mcp';
-import { MemoryClient, type Message } from 'mem0ai';
+import MemoryClient, { type Message } from './mem0-client';
 import { z } from 'zod';
 
 type NodeProcess = {
@@ -63,7 +63,7 @@ export default function createServer({
       const resolvedUserId = userId || defaultUserId;
       try {
         const messages: Message[] = [{ role: 'user', content }];
-        memoryClient.add(messages, {
+        await memoryClient.add(messages, {
           user_id: resolvedUserId,
           async_mode: true,
           version: 'v2',
