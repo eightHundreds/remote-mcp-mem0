@@ -150,6 +150,7 @@ export default function createServer({
 type WorkerEnv = {
   MEM0_API_KEY?: string;
   DEFAULT_USER_ID?: string;
+  MCP_ACCESS_TOKEN?: string;
 };
 
 let cachedHandler:
@@ -160,7 +161,8 @@ let cachedSignature: string | undefined;
 function getHandler(env: WorkerEnv) {
   const apiKey = env.MEM0_API_KEY ?? globalProcess?.env?.MEM0_API_KEY ?? '';
   const defaultUserId = env.DEFAULT_USER_ID ?? 'mem0-mcp-user';
-  const signature = `${apiKey}::${defaultUserId}`;
+  const accessToken = env.MCP_ACCESS_TOKEN ?? globalProcess?.env?.MCP_ACCESS_TOKEN ?? '';
+  const signature = `${apiKey}::${defaultUserId}::${accessToken}`;
 
   if (!cachedHandler || cachedSignature !== signature) {
     const server = createServer({
@@ -184,6 +186,10 @@ export async function fetch(
   const url = new URL(request.url);
 
   if (url.pathname === '/mcp') {
+    const unauthorizedResponse = enforceAuth(request, env, url);
+    if (unauthorizedResponse) {
+      return unauthorizedResponse;
+    }
     const handler = getHandler(env);
     return handler(request, env, ctx);
   }
@@ -195,6 +201,42 @@ export async function fetch(
   }
 
   return new Response('Not found', { status: 404 });
+}
+
+function enforceAuth(
+  request: Request,
+  env: WorkerEnv,
+  url: URL
+): Response | undefined {
+  const requiredToken =
+    env.MCP_ACCESS_TOKEN ?? globalProcess?.env?.MCP_ACCESS_TOKEN;
+
+  if (!requiredToken) {
+    return undefined;
+  }
+
+  const authHeader = request.headers.get('Authorization');
+  const bearerToken = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice('Bearer '.length)
+    : undefined;
+
+  const headerToken = request.headers.get('x-mcp-auth-token') ?? undefined;
+  const queryToken = url.searchParams.get('access_token') ?? undefined;
+
+  if (
+    bearerToken === requiredToken ||
+    headerToken === requiredToken ||
+    queryToken === requiredToken
+  ) {
+    return undefined;
+  }
+
+  return new Response('Unauthorized', {
+    status: 401,
+    headers: {
+      'WWW-Authenticate': 'Bearer realm="mem0-mcp"',
+    },
+  });
 }
 
 // Optional: keep STDIO compatibility for local usage
