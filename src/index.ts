@@ -189,7 +189,7 @@ export async function fetch(
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  if (url.pathname === '/mcp') {
+  if (url.pathname === '/mcp' || url.pathname.startsWith('/mcp/')) {
     const unauthorizedResponse = enforceAuth(request, env, url);
     if (unauthorizedResponse) {
       return unauthorizedResponse;
@@ -198,7 +198,7 @@ export async function fetch(
     return httpHandler(request, env, ctx);
   }
 
-  if (url.pathname === '/sse' || url.pathname === '/sse/message') {
+  if (url.pathname === '/sse' || url.pathname.startsWith('/sse/')) {
     const unauthorizedResponse = enforceAuth(request, env, url);
     if (unauthorizedResponse) {
       return unauthorizedResponse;
