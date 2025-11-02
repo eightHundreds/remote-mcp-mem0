@@ -6,6 +6,8 @@
 
 > 👉 点击上方按钮即可直接在 Cloudflare 控制台中创建项目，无需手动配置仓库。
 
+> English version: [README.en.md](README.en.md)
+
 ## 功能亮点
 - 开箱即用的 `add-memory` 和 `search-memories` 工具，调用 Mem0 API 存储与检索记忆
 - 同时暴露 `/sse` 与 `/mcp` 两种协议端点，适配 Cloudflare AI Playground 及本地 MCP 客户端
